@@ -10,9 +10,9 @@ This project aims to identify key factors contributing to cancer mortality rates
 
 ![EDA 4](https://github.com/user-attachments/assets/347caebb-1f37-4d02-a5c0-ad28d0ba58a0)
 
-**Final Regression Model Formula**: 
+**Final Regression Model Formula** 
 
-Predicting the Transformed Mean per Capita (100,000) Cancer Mortalities from these set of predictors
+Predicting the Transformed Mean per Capita (100,000) Cancer Mortalities from these set of predictors:
 
 1. incidenceRate: Mean per capita (100,000) cancer diagnoses
 
