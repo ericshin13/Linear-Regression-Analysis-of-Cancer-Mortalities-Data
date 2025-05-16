@@ -1,0 +1,526 @@
+---
+title: "Final Project | Report"
+author: "Eric Shin"
+date: last-modified
+format: 
+   html:
+     embed-resources: true
+---
+
+```{r loading packages, include = FALSE}
+library("ggplot2")
+
+library("readr")
+
+library("tidyverse")
+
+library("rms")
+
+library("MASS")
+
+library("lmtest")
+
+library("gt")
+
+```
+
+## Introduction
+
+The goal for this analysis is to understand different factors that may possibly contribute to cancer mortality rates in American counties. To achieve this goal, we are looking to build a linear regression model to predict the response variable, TARGET_deathRATE, which represents the Mean per capita (100,000) cancer mortalities. Some of the variables from the data range from demographic, socioeconomic, and healthcare-related factors. This includes different types of health coverages, the median age of county residents based on gender, the median income per county, along with employment and education status of county residents. Some of these variables can be seen as predictors that influence the outcomes of cancer mortality rates through the risk of getting cancer and the quality of treatment that county residents are receiving. 
+
+Throughout this analysis, we are looking to:
+
+1. Find the most significant predictors of cancer mortality rates
+
+2. Create the best fit for the regression model based on the given response and predictor variables
+
+3. Report the final regression model results and diagnostics to give insights 
+
+## Step One: Exploratory Data Analysis
+
+For Step One of this analysis, we are looking to choose six explanatory variables that we feel are the most significant in predicting the cancer mortality rates. After choosing the explanatory variables, we are looking to conduct exploratory data analysis to assess explanatory variables that may be highly correlated to each other. This is important because correlated explanatory variables can affect a regression model's coefficient estimates and standard errors which will lead to inaccurate model interpretability. We are also looking to conduct exploratory data analysis to assess explanatory variables that may be highly correlated with cancer mortality rates. This is important because we can figure out which variables strongly explain the variation in the response variable. 
+
+The six chosen explanatory variables:
+
+1. incidenceRate: Mean per capita (100,000) cancer diagnoses
+
+2. MedianAgeMale: Median age of male county residents 
+
+3. MedianAgeFemale: Median age of female county residents 
+
+4. PctPrivateCoverage: Percent of county residents with private health coverage 
+
+5. PctEmpPrivCoverage: Percent of county residents with employee-provided private health coverage 
+
+6. PctPublicCoverage: Percent of county residents with government-provided health coverage 
+
+```{r loading data, message = FALSE}
+#Assigning the cancer data as an object
+cancer <- read_csv("DS64510_Project_Data.csv") 
+
+```
+
+1\.
+
+```{r creating correlation matrix}
+#Creating a correlation matrix that displays the correlation between all selected explanatory variables and the response variable
+cor(cancer[, c("TARGET_deathRate", "incidenceRate", "MedianAgeMale", "MedianAgeFemale", 
+               "PctPrivateCoverage", "PctEmpPrivCoverage", "PctPublicCoverage")], 
+    use = "complete.obs")
+
+```
+
+* MedianAgeMale and MedianAgeFemale (0.93) are highly correlated, meaning they provide almost the same information. Including both in a regression model may cause redundancy.
+
+* PctPrivateCoverage and PctEmpPrivCoverage (0.83) are strongly correlated. Since PctEmpPrivCoverage is a subset of PctPrivateCoverage, including both may not be necessary.
+
+* PctEmpPrivCoverage and PctPublicCoverage (-0.78) show a strong negative correlation. This makes sense since people with employer-provided private coverage are less likely to rely on public coverage.
+
+* PctPrivateCoverage and PctPublicCoverage (-0.72) show another strong negative relationship, as private and public coverage tend to be inversely related.
+
+* PctPublicCoverage (0.40) has a moderate positive correlation with cancer mortality rates. This suggests that counties with higher rates of public health insurance tend to have higher cancer mortality rates, possibly due to lower access to high-quality care. Therefore, this variable may be helpful at predicting the response.
+
+* PctPrivateCoverage (-0.39) has a moderate negative correlation with cancer mortality. This means that counties with more private insurance coverage tend to have lower cancer mortality rates, possibly due to better access to early detection and treatment. Therefore, this variable may be helpful at predicting the response.
+
+* IncidenceRate (0.45) shows a moderate positive correlation with cancer mortality, indicating that counties with higher cancer diagnosis rates also tend to have higher mortality rates. Therefore, this variable may be helpful at predicting the response.
+
+2\.
+
+```{r TARGET_deathRate vs incidenceRate}
+#Using the ggplot() function to create a scatterplot showing the relationship between the TARGET_deathRate and incidenceRate variables
+ggplot(cancer, aes(x = incidenceRate, y = TARGET_deathRate)) +
+  geom_point(color = "forestgreen") +
+  labs(title = "Cancer Mortality Rate vs Cancer Diagnoses Rate", 
+       x = "Average Cancer Diagnoses per 100,000", 
+       y = "Average Cancer Mortalities per 100,000") +
+  theme_minimal() 
+
+```
+
+* The scatter plot for TARGET_deathRate vs incidenceRate reveals a strong positive trend, suggesting that counties with higher cancer diagnosis rates tend to experience higher cancer mortality rates. This relationship could indicate that areas with more frequent diagnoses may also have greater challenges in reducing mortality, possibly due to limited access to healthcare or other factors affecting treatment and prevention.
+
+```{r TARGET_deathRate vs PctPrivateCoverage}
+#Using the ggplot() function to create a scatterplot showing the relationship between the TARGET_deathRate and PctPrivateCoverage variables
+ggplot(cancer, aes(x = PctPrivateCoverage, y = TARGET_deathRate)) +
+  geom_point(color = "forestgreen") +
+  labs(title = "Cancer Mortality Rate vs Percent of County Residents with Private Health Coverage ", 
+       x = "County Residents with Private Health Coverage (%)", 
+       y = "Average Cancer Mortalities per 100,000") +
+  theme_minimal()
+
+```
+
+* The scatter plot for TARGET_deathRate vs PctPrivateCoverage shows a moderate negative trend, suggesting that counties with higher levels of private health insurance coverage tend to have lower cancer mortality rates. This could be attributed to better access to healthcare, including early detection and more effective treatments, which may reduce cancer-related deaths.
+
+```{r TARGET_deathRate vs PctPublicCoverage}
+#Using the ggplot() function to create a scatterplot showing the relationship between the TARGET_deathRate and PctPublicCoverage variables
+ggplot(cancer, aes(x = PctPublicCoverage, y = TARGET_deathRate)) +
+  geom_point(color = "forestgreen") +
+  labs(title = "Cancer Mortality Rate vs Percent of County Residents with Government-Provided Health Coverage", 
+       x = "County Residents with Government-Provided Health Coverage (%)", 
+       y = "Average Cancer Mortalities per 100,000") +
+  theme_minimal() 
+
+```
+
+* The scatter plot for TARGET_deathRate vs PctPublicCoverage reveals a moderate positive trend, indicating that counties with higher rates of public health insurance coverage tend to have higher cancer mortality rates. This could be due to factors such as limited access to high-quality care or delays in diagnosis and treatment within public healthcare systems.
+
+```{r TARGET_deathRate vs PctEmpPrivCoverage}
+#Using the ggplot() function to create a scatterplot showing the relationship between the TARGET_deathRate and PctEmpPrivCoverage variables
+ggplot(cancer, aes(x = PctEmpPrivCoverage, y = TARGET_deathRate)) +
+  geom_point(color = "forestgreen") +
+  labs(title = "Cancer Mortality Rate vs Percent of County Residents with Employee-Provided Private Health Coverage",
+       x = "County Residents with Employee-Provided Private Health Coverage (%)", 
+       y = "Average Cancer Mortalities per 100,000") +
+  theme_minimal()
+
+```
+
+* The scatter plot for TARGET_deathRate vs PctEmpPrivCoverage shows a moderate negative trend, suggesting that counties with higher rates of employer-provided private health insurance tend to have lower cancer mortality rates. This may reflect better access to preventive care, timely treatments, and overall health management associated with employer-sponsored insurance.
+
+3\.
+
+```{r producing multivariate scatterplot}
+#Using the ggplot() function to create a scatterplot showing the relationship between TARGET_deathRate and incidenceRate by PctPublicCoverage
+ggplot(cancer, aes(x = incidenceRate, y = TARGET_deathRate, color = PctPublicCoverage)) +
+  geom_point() +
+  labs(title = "Interaction Effect: Cancer Mortality vs Incidence Rate by Government-Provided Coverage", 
+       x = "Average Cancer Diagnoses per 100,000", 
+       y = "Average Cancer Mortalities per 100,000") +
+  scale_color_gradient(low = "yellow", high = "forestgreen") +
+  theme_minimal()
+
+```
+
+* The scatterplot shows a strong positive trend between cancer mortality rates and cancer diagnosis rates, suggesting that counties with higher cancer diagnoses tend to have higher mortality rates. The interaction effect between incidenceRate and PctPublicCoverage suggests that the relationship between cancer diagnoses and mortality is influenced by the level of government-provided health coverage.
+
+## Step Two: Fitting a Linear Regression Model
+
+For Step Two of this analysis, we are looking to fit a linear regression model with cancer mortality rates as the response variables along with the chosen explanatory variables from Step One. After fitting the regression model, we are looking to comment on variables that provide a slope estimate that is contrary to what we expected, along with predictors are statistically significant and the the proportion of the variation in the response variable that is explained from the predictors.
+
+1\.
+
+```{r choosing explanatory variables}
+#Creating linear regression model based on the explanatory variables that were chosen from step one of the project
+cancer_model <- lm(TARGET_deathRate ~ incidenceRate + MedianAgeMale + MedianAgeFemale + PctPrivateCoverage + PctEmpPrivCoverage + PctPublicCoverage, data = cancer)
+
+```
+
+```{r parameter estimates table, warning = FALSE}
+#Summarizing the linear regression model
+coeff_table <- data.frame(
+  Predictor = c("(Intercept)", "incidenceRate", "MedianAgeMale", "MedianAgeFemale", "PctPrivateCoverage", "PctEmpPrivCoverage", "PctPublicCoverage"),
+  `Parameter Estimate` = c(95.280901, 0.229090, -0.551750, 0.335319, -1.048242, 0.560945, 0.903128),
+  `p-value` = c("< 2e-16", "< 2e-16", "0.00788", "0.12382", "< 2e-16", "1.81e-10", "< 2e-16")
+)
+
+coeff_table <- setNames(coeff_table, c("Predictor", "Parameter Estimate", "p-value"))
+
+coeff_table %>%
+  gt() %>%
+  tab_header(
+    title = "Regression Coefficients Table",
+    subtitle = "Adjusted R-Squared: 0.4118"
+  ) %>%
+  fmt_number(
+    columns = vars(`Parameter Estimate`),
+    decimals = 5
+  )
+
+```
+
+2\.
+
+* The coefficient for MedianAgeMale is -0.551750, which suggests that as the median age of male residents increases, the cancer mortality rate decreases. This may be unexpected, as we might assume that older populations would have higher cancer mortality rates. However, this result may be influenced by the specific context of the data.
+
+* The coefficient for MedianAgeFemale is 0.335319, indicating a positive relationship between median age of female residents and cancer mortality rates, although it is not statistically significant. This could be unexpected if we anticipated a stronger impact of age on cancer mortality, assuming that age is a key factor in cancer mortality.
+
+* The coefficient for PctEmpPrivCoverage is 0.560945, meaning that higher percentages of employment-based private health coverage are associated with higher cancer mortality rates. This might seem opposite of what is expected since private coverage is often associated with better access to healthcare. This could be reflecting that areas with higher private coverage may have more wealth or be more urbanized, which could influence the data in ways not captured by the model.
+
+3\. 
+
+* The incidenceRate variable, with a p-value of < 2e-16, is statistically significant. This suggests that the cancer diagnosis rate has a strong impact on cancer mortality rates, as expected.
+
+* The MedianAgeMale variable, with a p-value of 0.00788, is statistically significant. This suggests that the median age of male residents has a significant impact on cancer mortality rates.
+
+* The PctPrivateCoverage variable, with a p-value of < 2e-16, is statistically significant. This suggests that the percentage of residents with private health coverage is a significant predictor of cancer mortality rates, as expected.
+
+* The PctEmpPrivCoverage variable, with a p-value of 1.81e-10, is statistically significant, showing that employment-based private health coverage is a significant predictor of cancer mortality rates.
+
+* The PctPublicCoverage variable, with a p-value of < 2e-16, is statistically significant, suggesting that the percentage of residents with public health coverage has a significant impact on cancer mortality rates.
+
+* The MedianAgeFemale variable, however, is not statistically significant, with a p-value of 0.12382, which is somewhat surprising since we might expect the median age of female residents to have an impact on cancer mortality rates, similar to the effect seen for males.
+
+4\. 
+
+* The adjusted R^2 value of the linear regression model is 0.412. This means that 41.2% of the variation in the TARGET_deathRate variable is explained by the incidenceRate, MedianAgeMale, MedianAgeFemale,  PctPrivateCoverage, PctEmpPrivCoverage, and PctPublicCoverage variables. This indicates a moderate level of explanatory power for the model, though 58.8% of the variation remains unexplained.
+
+## Step Three: Performing Model Selection
+
+For Step Three of this analysis, we are looking to perform model selection via automated selection on the model with all of our chosen predictors. After applying the selection using the fastbw() and stepAIC() algorithms, we are also looking to comment on the variables that the procedure removed from or retained in our model.
+
+```{r performing fastbw selection}
+#Creating ols model for the backwards selection algorithm
+ols_cancer_model <- ols(TARGET_deathRate ~ incidenceRate + MedianAgeMale + MedianAgeFemale + PctPrivateCoverage + PctEmpPrivCoverage + PctPublicCoverage, data = cancer) 
+
+#Applying automated p-value-based selection using the fastbw() function on the original model
+fastbw(ols_cancer_model, rule = "p", sls = 0.05) 
+
+```
+
+* The result of the fastbw() selection algorithm aligns well with my intuition, which is the MedianAgeFemale variable getting removed from the model. Previously, in step two of the project, we find that the MedianAgeFemale variable has a p-value of 0.12382, meaning that this variable is not statistically significant in predicting cancer mortality rates. Knowing that the fastbw() algorithm evaluates variables through their p-values and significance level thresholds, it does a great job of identifying the variables that are not statistically significant. Therefore, the MedianAgeFemale variable gets removed from the final model.
+
+* The only difference between the original model from step two and the fastbw() model is the original model has the MedianAgeFemale variable included. Whereas, the fastbw() model does not have the MedianAgeFemale variable included.
+
+```{r applying stepAIC selection}
+#Using the stepAIC() function to perform AIC-based selection on the original model
+stepAIC(cancer_model) 
+
+#Using the extractAIC() function to get the value of the AIC for the original model
+extractAIC(cancer_model) 
+
+```
+
+* The result of the stepAIC() selection algorithm does not align well with my intuition, which is the MedianAgeFemale variable getting removed from the model. Previously, in step two of the project, we find that the MedianAgeFemale variable has a p-value of 0.12382, meaning that this variable is not statistically significant in predicting cancer mortality rates. However, the stepAIC() function evaluates the the model's resulting AIC to determine which predictors should be removed, balancing both fit and model complexity. After examining the results of this selection algorithm, it looks like removing the MedianAgeFemale variable would increase the AIC slightly, from 18642 to 18643, indicating that eliminating this variable does not improve the model significantly.Therefore, since the goal is to minimize the AIC value, the MedianAgeFemale variable gets kept in the final model.
+
+* The original model from step two is the same as the stepAIC() model since no variables got removed in the selection algorithm.
+
+* After examining results from both selection algorithms, we are choosing to proceed with the model from the fastbw() algorithm. We want to prioritize interpretability and statistical significance, ensuring that every variable in the model has a meaningful relationship with the target variable.
+
+## Step Four: Applying Diagnostics to the Model
+
+For Step Four of this analysis, we are looking to perform diagnostics on the model chosen in Step Three to check the mathematical assumptions of the model. To do this we will create the following plots:
+
+1. Diagnostic Plot (Fitted values vs Residuals) to check for constant variance of our regression model's residuals
+
+2. Q-Q Plot to check for normality of our regression model's residuals
+
+3. Lagged Residual Plot to check for the independence of our regression model's errors
+
+```{r choosing explanatory variables 2}
+#Creating linear regression model based on the given recommendation from the fastbw() selection algorithm
+cancer_model <- lm(TARGET_deathRate ~ incidenceRate + MedianAgeMale + PctPrivateCoverage + PctEmpPrivCoverage + PctPublicCoverage, data = cancer) 
+
+```
+
+```{r parameter estimates table 2, warning = FALSE}
+#Summarizing the linear regression model
+coeff_table <- data.frame(
+  Predictor = c("Intercept", "incidenceRate", "MedianAgeMale",
+                "PctPrivateCoverage", "PctEmpPrivCoverage", "PctPublicCoverage"),
+  `Parameter Estimate` = c(95.391943, 0.228561, -0.275266, -1.014346, 0.545740, 0.951754),
+  `p-value` = c("< 2e-16", "< 2e-16", "0.00812", "< 2e-16", "4.3e-10", "< 2e-16")
+) 
+
+coeff_table <- setNames(coeff_table, c("Predictor", "Parameter Estimate", "p-value")) 
+
+coeff_table %>%
+  gt() %>%
+  tab_header(
+    title = "Regression Coefficients Table",
+    subtitle = "Adjusted R-Squared: 0.4115"
+  ) %>%
+  fmt_number(
+    columns = vars(`Parameter Estimate`),
+    decimals = 6
+  ) 
+
+```
+
+2\.
+
+```{r creating diagnostic plot}
+#Creating diagnostic plot of the fitted values versus residuals of the regression model 
+plot(cancer_model$fitted.values, cancer_model$residuals, col = "forestgreen") 
+
+```
+
+* The pattern from the diagnostic plot reveals a roughly circular shape of the fitted values vs residuals from the regression model. This pattern suggests that there may not be heteroskedasticity from the residuals. Therefore, the assumption of the residuals having constant variance may be upheld. 
+
+```{r creating qqplot}
+#Creating qqplot to check if the regression model residuals follow a normal distribution
+qqnorm(cancer_model$residuals, col = "forestgreen") 
+
+#Adding reference line to the qqplot
+qqline(cancer_model$residuals) 
+
+```
+
+* The qqplot suggests that the assumption of normality may not be upheld. The plot shows quite a few gross departures from the line, suggesting that the residuals of the regression model are not following a normal distribution. 
+
+```{r creating lagged residual plot}
+#Creating lagged residual plot to check for serial correlation
+n <- length(residuals(cancer_model))
+
+plot(tail(residuals(cancer_model), n - 1) ~ head(residuals(cancer_model), n - 1), 
+     xlab = expression(hat(epsilon)[i]), 
+     ylab = expression(hat(epsilon)[i + 1]),
+     col = "forestgreen") 
+
+#Adding reference line to the lagged residual plot
+abline(h = 0, v = 0, col = grey(0.75)) 
+
+```
+
+* The pattern from the lagged residual plot reveals a roughly circular shape of the residuals from the regression model. There are also no clear upward or downward trends. This pattern suggests that the residuals may not have any type of strong serial correlation. Therefore, the assumption of the errors having independence may be upheld.
+
+## Step Five: Investigating Fit for Individual Observations
+
+For Step Five of this analysis, we are looking to check for outliers and influential observations in our regression model. We are also looking to write up brief explanations as to what we are seeing.
+
+1\.
+
+```{r creating diagnostic plot 2}
+#Creating diagnostic plot of the fitted values versus residuals of the regression model 
+plot(cancer_model$fitted.values, cancer_model$residuals, col = "forestgreen") 
+
+```
+
+```{r calculating standardized residuals}
+#Calculating standardized residuals of the regression model, displaying the first few standardized residual values
+head(rstandard(cancer_model)) 
+
+#Checking the number of standardized residuals that are greater than the threshold value of 3
+sum(abs(rstandard(cancer_model)) > 3) 
+
+```
+
+```{r calculating cooks distance}
+#Calculating the cook's distances of the regression model, displaying the first few cook's distances
+head(cooks.distance(cancer_model)) 
+
+#Creating the F-statistic threshold for detecting influential observations for the regression model
+Fthresh <- qf(0.5, 6, 3047 - 6) 
+
+#Checking the number of cook's distances that are greater than the F-statistic threshold value
+sum(cooks.distance(cancer_model) > Fthresh) 
+
+```
+
+2\. 
+
+* Diagnostic Plot: The diagnostic plot reveals that there are a few influential points that are far away from the circular shape of points. Some of these influential points have large residual values and others have large fitted values. Therefore, these points appear to be outliers because they don't fit well with the regression model.
+
+* Standardized Residuals: The absolute values of 21 standardized residuals from the regression model are greater than the threshold value of 3. Therefore, these values appear to be outliers. 
+
+* Cook's Distance: None of the data points have Cook’s Distances greater than the F statistic threshhold. If we were going strictly off of Cook's Distances, we don’t have reason to believe there are any influential data points.
+
+## Step Six: Applying Transformations to the Model
+
+For Step Six of this analysis, we are looking to correct our regression model since one of our mathematical assumptions of the model were not met in Step Four (Normality of the regression model's residuals). A Box-Cox transformation is going to be needed since we need to transform the response variable to improve the regression model's fit. 
+
+1\.
+
+```{r applying box cox method}
+#Applying the Box-Cox Method to the regression
+bc <- boxcox(cancer_model, plotit = T) 
+
+#Extracting the optimal value of lambda
+lambda <- bc$x[which.max(bc$y)] 
+
+#Printing the optimal value of lambda
+lambda 
+
+```
+
+* In step 4 of this project, the qqplot revealed quite a few gross departures from the line, suggesting that the residuals of the regression model were not following a normal distribution. Therefore, the assumption of normality was not upheld. So, a Box-Cox tranformation is needed to correct the regression model. 
+
+```{r fitting linear regression model 2}
+#Fitting a linear regression model with TARGET_deathRate raised to the lambda power as the response along with incidenceRate, MedianAgeMale, PctPrivateCoverage, PctEmpPrivCoverage, and PctPublicCoverage as predictors
+cancer_model_transformed <- lm(TARGET_deathRate^lambda ~ incidenceRate + MedianAgeMale + PctPrivateCoverage + PctEmpPrivCoverage + PctPublicCoverage, data = cancer) 
+
+#Summarizing the linear regression model
+cancer_transformed_summary <- summary(cancer_model_transformed) 
+
+```
+
+* The optimal value of lambda for the original regression model comes out to 0.8282828. This means that fitting a regression model with a response of y^lambda is the most appropriate. We can also note that zero is not included in the confidence interval for lambda which means that a log transformation is not a good and statistically justifiable transformation for the response variable.
+
+```{r creating diagnostic plot 3}
+#Creating a diagnostic plot of the fitted values vs residuals of the new linear regression model using the transformation recommended by the Box-Cox Method
+plot(cancer_model_transformed$fitted.values, cancer_model_transformed$residuals, col = "forestgreen")
+
+```
+
+* The pattern from the diagnostic plot reveals a roughly circular shape of the fitted values vs residuals from the transformed regression model. This pattern suggests that there may not be heteroskedasticity from the residuals. Therefore, the assumption of the residuals having constant variance may be upheld. 
+
+## Addressing Statistical Testing and Outliers
+
+In Steps 4 through 6, we found issues with non-normality of our regression model's residuals along with outliers that were present in the data. It is important to give insights on how different statistical tests and outliers in the data can give inaccurate results and can lead us to make inaccurate interpretations.  
+
+The Breusch-Pagan and Shapiro-Wilk tests can be problematic for this data due to its large sample size, 3047 observations. These tests are known to be sensitive in large datasets, often rejecting the null hypothesis even when violations of normality or homoscedasticity are minimal or absent. This tendency can lead to false positives, suggesting problems with the data that may not be practically significant. Therefore, the BP and SW tests were not used as part of this analysis to avoid altering interpretations of our data.
+
+Additionally, this data contains outliers, which can further alter the statistical testing results, potentially exaggerating the extent of non-normality and heteroscedasticity. However, we have chosen to retain these outliers in the analysis, as they likely represent meaningful variation in the data rather than simple measurement errors, and removing them could make our regression model biased.
+
+While the Box-Cox transformation we applied may not have visibly addressed every single issue, it likely helped stabilize the variance and improve normality, even if only marginally.
+
+Given that the confidence interval for the lambda parameter did not include 1, there should still be a basis for keeping the transformation, as it indicates a meaningful difference from the original regression model. Therefore, we will use the Box-Cox transformed regression model as our final model to report. 
+
+## Step Seven: Reporting Inferences and Making Predictions
+
+For Step Seven of this analysis, we are looking to report our final regression model along with the statistical inferences for our model. For statistical inferencing, we are looking to:
+
+1. Compute and report a 95% confidence interval for the slope of whichever predictor we feel is most important
+
+2. Choose particular values of our predictors that are meaningful and compute a 95% confidence interval for the predicted value of y at those values
+
+3. Compute and report a 95% prediction interval for a particular observation by choosing particular values of our predictors and computing the prediction interval for those values
+
+1\.
+
+```{r parameter estimates table 3, warning = FALSE}
+#Summarizing the linear regression model
+coeff_table <- data.frame(
+  Predictor = c("Intercept", "incidenceRate", "MedianAgeMale", "PctPrivateCoverage", "PctEmpPrivCoverage", "PctPublicCoverage"),
+  `Parameter Estimate` = c(44.39127, 0.07757, -0.09841, -0.34047, 0.18988, 0.33183),
+  `p-value` = c("< 2e-16", "< 2e-16", "0.00542", "< 2e-16", "1.76e-10", "< 2e-16")
+) 
+
+coeff_table <- setNames(coeff_table, c("Predictor", "Parameter Estimate", "p-value")) 
+
+coeff_table %>%
+  gt() %>%
+  tab_header(
+    title = "Regression Coefficients Table",
+    subtitle = "Adjusted R-Squared: 0.4103"
+  ) %>%
+  fmt_number(
+    columns = vars(`Parameter Estimate`),
+    decimals = 5
+  ) 
+
+```
+
+For the confidence interval of a single slope, we felt that PctPrivateCoverage was a good choice because it is both statistically significant and has a relatively large absolute effect size compared to other predictors. Although the incidenceRate variable could have been seen as one of the more important predictors, we decided to reflect a critical aspect of healthcare coverage.
+
+We chose to use the median values of the predictors as the input for both the 95% confidence interval for a prediction and the 95% prediction interval for a particular observation because the median is a general measure of central tendency. It is less sensitive to extreme values and outliers than the mean, making it a reliable representation of a typical county in the data. This approach provides a more realistic estimate of the expected cancer death rate for a typical county, while still capturing the variability present in the data.
+
+
+```{r reporting the r^2}
+#Extracting original R-squared from regression model
+cancer_transformed_summary$r.squared 
+
+#Extracting adjusted r-squared from regression model
+cancer_transformed_summary$adj.r.squared 
+
+```
+
+```{r computing confidence interval}
+#Computing and reporting a 95% confidence interval for the slope of PctPrivateCoverage
+t_critical <- qt(0.975, 3047 - 6)
+
+lower_bound <- -0.340467 - t_critical * 0.028453
+
+#lower_bound^(1/lambda) = -0.328
+
+upper_bound <- -0.340467 + t_critical * 0.028453
+
+#upper_bound^(1/lambda) = -0.220
+
+```
+
+* We are 95% confident that for every one percentage point increase in private health insurance coverage, the cancer death rate changes by between -0.328 and -0.220 assuming all other variables remain constant.
+
+```{r computing confidence interval 2}
+#Calculating the medians of the predictors used in the regression model, storing these results in a data frame
+medians <- data.frame(
+  incidenceRate = median(cancer$incidenceRate, na.rm = TRUE),
+  MedianAgeMale = median(cancer$MedianAgeMale, na.rm = TRUE),
+  PctPrivateCoverage = median(cancer$PctPrivateCoverage, na.rm = TRUE),
+  PctEmpPrivCoverage = median(cancer$PctEmpPrivCoverage, na.rm = TRUE),
+  PctPublicCoverage = median(cancer$PctPublicCoverage, na.rm = TRUE)
+) 
+
+#Using existing regression model to make a prediction with a 95% confidence interval
+cancer_confidence <- predict(cancer_model_transformed, newdata = medians, interval = "confidence", level = 0.95) 
+
+cancer_confidence_original <- cancer_confidence^(1/lambda)
+
+cancer_confidence_original
+
+```
+
+* We are 95% confident that the mean cancer death rate for counties with median predictor values is between 177.9638 and 179.5068 per 100,000 people.
+
+```{r computing prediction interval}
+#Using existing regression model to make a 95% prediction interval
+cancer_prediction <- predict(cancer_model_transformed, newdata = medians, interval = "prediction", level = 0.95) 
+
+cancer_prediction_original <- cancer_prediction^(1/lambda)
+
+cancer_prediction_original
+
+```
+
+* We are 95% confident that, for a county with median values of all predictors, the cancer death rate will fall between 137.8257 and 221.3301 deaths per 100,000 people.
+
+
+## Conclusion
+
+After applying a Box-Cox transformation to address the non-normality of our regression model's residuals identified in earlier steps, our final regression model achieved an adjusted R-squared of 0.4103, indicating that about 41% of the variability in the cancer mortality rates can be explained by the selected predictors. These include incidenceRate, MedianAgeMale, PctPrivateCoverage, PctEmpPrivCoverage, and PctPublicCoverage.
+
+The confidence interval for PctPrivateCoverage suggests that for every 1% increase in private health coverage, the death rate decreases by approximately 0.328 to 0.220 units, holding other factors constant, emphasizing the critical role of private insurance in reducing cancer mortality. Meanwhile, the positive relationship with public coverage highlights potential challenges related to access and quality in publicly insured populations.
+
+In regards to regression model's predictions, we are 95% confident that the mean cancer death rate for counties with median predictor values is between 177.9638 and 179.5068 per 100,000 people. This provides an estimate of the average cancer mortality rate for counties with typical characteristics. Furthermore, we are 95% confident that, for a county with median values of all predictors, the cancer death rate will fall between 137.8257 and 221.3301 deaths per 100,000 people. This prediction interval reflects the uncertainty that is given in predicting individual cancer mortality outcomes and underscores the variability between counties with similar characteristics.
+
+While this model captures meaningful trends, it also leaves a significant portion of the variability unexplained, suggesting that other unmeasured factors, such as lifestyle behaviors of county residents or other healthcare initiatives, may play a crucial role in shaping cancer mortality outcomes.
