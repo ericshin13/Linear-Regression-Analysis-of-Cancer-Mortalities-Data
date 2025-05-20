@@ -32,6 +32,6 @@ When the residuals of a regression model have constant variance, it means the mo
 
 *Performing Variable Selection, Diagnostics, Correcting Model Assumptions, Final Inferences, and Concluding Thoughts are discussed in the HTML Report
 
+## Technology Used: R Programming Language
 ## Project Code is located in the qmd file
 ## Project Report is located in the html file (Download raw file)
-## Technology Used: R Programming Language
