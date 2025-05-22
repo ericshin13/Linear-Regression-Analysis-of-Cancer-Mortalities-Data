@@ -35,3 +35,4 @@ When the residuals of a regression model have constant variance, it means the mo
 ## Technology Used: R Programming Language
 ## Project Code is located in the qmd file
 ## Project Report is located in the html file (Download raw file)
+## Project Data is located in the Excel file (Download raw file)
