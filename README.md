@@ -1,4 +1,4 @@
-# Linear Regression Analysis of Cancer Data
+# Linear Regression Analysis of Cancer Mortalities Data
 
 This project identified key factors contributing to cancer mortality rates across American counties. Using a linear regression model, we predicted the TARGET_deathRATE, the mean number of cancer deaths per 100,000 people, based on a range of demographic, socioeconomic, and healthcare-related variables. These include factors such as the types of health coverage available, median age by gender, median income, employment status, and education levels, all of which may influence cancer outcomes through both cancer risk and the quality of available treatment.
 
