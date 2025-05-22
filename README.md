@@ -30,7 +30,7 @@ Predicting the Transformed Mean per Capita (100,000) Cancer Mortalities from the
 
 When the residuals of a regression model have constant variance, it means the model satisfies the homoscedasticity assumption. This ensures that the variability of the errors is consistent across all levels of the predicted values, leading to more reliable standard errors, confidence intervals, and hypothesis tests. It also indicates that the model's predictions are equally precise across the range of the response variable, avoiding biased parameter estimates.
 
-*Performing Variable Selection, Diagnostics, Correcting Model Assumptions, Final Inferences, and Concluding Thoughts are discussed in the HTML Report
+*Performing Variable Selection, Diagnostics, Correcting Model Assumptions, Final Inferences/Predictions, and Concluding Thoughts are discussed in the HTML Report
 
 ## Technology Used: R Programming Language
 ## Project Code is located in the qmd file
