@@ -24,7 +24,9 @@ Predicting the Transformed Mean per Capita (100,000) Cancer Mortalities from the
 
 5. PctPublicCoverage: Percent of county residents with government-provided health coverage
 
+<div align="center">
 ![Regression Coefficients Table](https://github.com/user-attachments/assets/ae7e0bdd-5b0e-4c26-8623-20a88d73c3a8)
+</div>
 
 ![Diagnostic Plot (Transformed Regression Model)](https://github.com/user-attachments/assets/fa9b60dc-c314-4067-843a-3e3a1f7288b6)
 
